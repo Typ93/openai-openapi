@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Model 360°: korpus (pępek → uda)</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: Arial, sans-serif; }
+      #info { position: fixed; top: 10px; left: 10px; right: 10px; background: rgba(0,0,0,.55); padding: 10px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; }
+      #app { width: 100%; height: 100%; }
+      a { color: #89c2ff; }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <strong>Prosty model 3D (360°)</strong> — neutralna, anatomiczna bryła od linii pępka do ud.
+      <br />LPM: obrót · Kółko: zoom · PPM: przesuwanie.
+    </div>
+    <div id="app"></div>
+
+    <script type="module">
+      import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+      import { OrbitControls } from 'https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+
+      const app = document.getElementById('app');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x111111);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 1.15, 2.75);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      app.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.minDistance = 1.2;
+      controls.maxDistance = 5;
+      controls.target.set(0, 0.55, 0);
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 1.1));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.95);
+      dir.position.set(2, 3, 2);
+      scene.add(dir);
+
+      // Symetryczna "manekinowa" siatka korpusu od pępka do górnej części ud.
+      // Profil promienia (X) względem wysokości (Y): subtelne biodra i zwężenie w pasie.
+      const profile = [
+        { y: 1.00, r: 0.40 }, // okolica pępka
+        { y: 0.88, r: 0.39 },
+        { y: 0.74, r: 0.37 }, // talia
+        { y: 0.58, r: 0.42 }, // biodra
+        { y: 0.46, r: 0.47 },
+        { y: 0.33, r: 0.50 }, // najszersza część bioder
+        { y: 0.20, r: 0.44 },
+        { y: 0.08, r: 0.36 }, // przejście do ud
+        { y: -0.07, r: 0.30 } // górna część ud
+      ];
+
+      const pts = profile.map(p => new THREE.Vector2(p.r, p.y));
+      const torsoGeom = new THREE.LatheGeometry(pts, 96);
+      const torsoMat = new THREE.MeshStandardMaterial({
+        color: 0xc89f8d,
+        roughness: 0.74,
+        metalness: 0.05
+      });
+      const torso = new THREE.Mesh(torsoGeom, torsoMat);
+      scene.add(torso);
+
+      // Delikatny zarys centralnej linii sylwetki dla lepszego odczytu bryły.
+      const wire = new THREE.LineSegments(
+        new THREE.EdgesGeometry(torsoGeom, 24),
+        new THREE.LineBasicMaterial({ color: 0x2a1c17, transparent: true, opacity: 0.25 })
+      );
+      torso.add(wire);
+
+      const ground = new THREE.Mesh(
+        new THREE.CircleGeometry(2.4, 64),
+        new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 1 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.08;
+      scene.add(ground);
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    </script>
+  </body>
+</html>
